@@ -602,3 +602,25 @@ h1 {
     flex: 0 0 auto;
   }
 }
+.session-control-group {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+.session-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.btn.mic-toggle {
+  background: var(--ink);
+  color: var(--card);
+}
+.btn.mic-toggle[aria-pressed="true"] {
+  background: var(--accent);
+  color: #fff;
+}
+.session-control-group .error {
+  font-size: 0.84rem;
+}

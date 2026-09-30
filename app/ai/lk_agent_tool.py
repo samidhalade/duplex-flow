@@ -183,7 +183,7 @@ def get_realtime_model():
             voice=os.getenv("GOOGLE_VOICE", "Puck"),
             realtime_input_config=types.RealtimeInputConfig(
                 automatic_activity_detection=types.AutomaticActivityDetection(
-                    silence_duration_ms=1200,
+                        silence_duration_ms=800,
                 )
             ),
         )
@@ -234,7 +234,7 @@ class AssistantFnc:
             date: The travel date, e.g. 'April 10 (use Month Day format ONLY, never YYYY-MM-DD or ordinal suffixes like th)'
         """
         self.tracker.tool_start_at = time.time()
-        result = dict(mock_apis.search_flights("search_flights", destination=destination, date=date), note="SEARCH ONLY. Flight is NOT booked yet. If user asked to book a flight, you MUST call book_flight(passenger_name=...) NOW before speaking!")
+        result = dict(registry.call("search_flights", destination=destination, date=date), note="SEARCH ONLY. Flight is NOT booked yet. If user asked to book a flight, you MUST call book_flight(passenger_name=...) NOW before speaking!")
         self.tracker.tool_end_at = time.time()
         self.log_tool_call("search_flights", {"destination": destination, "date": date}, self.tracker.tool_start_at, self.tracker.tool_end_at)
         return json.dumps(result)
@@ -246,7 +246,7 @@ class AssistantFnc:
             passenger_name: The name of the passenger, e.g. 'John Doe'
         """
         self.tracker.tool_start_at = time.time()
-        result = mock_apis.book_flight( passenger_name=passenger_name)
+        result = registry.call("book_flight", passenger_name=passenger_name)
         self.tracker.tool_end_at = time.time()
         self.log_tool_call("book_flight", {"passenger_name": passenger_name}, self.tracker.tool_start_at, self.tracker.tool_end_at)
         return json.dumps(result)
@@ -261,7 +261,7 @@ class AssistantFnc:
         self.tracker.tool_start_at = time.time()
         doc_number = doc_number.replace("-", "")
         if doc_number.upper().startswith("DL") or "driver" in doc_type.lower() or "license" in doc_type.lower(): doc_type = "driver_license"
-        result = mock_apis.update_identity_doc( doc_type=doc_type, doc_number=doc_number)
+        result = registry.call("update_identity_doc", doc_type=doc_type, doc_number=doc_number)
         self.tracker.tool_end_at = time.time()
         self.log_tool_call("update_identity_doc", {"doc_type": doc_type, "doc_number": doc_number}, self.tracker.tool_start_at, self.tracker.tool_end_at)
         return json.dumps(result)
@@ -301,7 +301,7 @@ class AssistantFnc:
             source_account: Bank account identifier, e.g. 'checking'
         """
         self.tracker.tool_start_at = time.time()
-        result = mock_apis.modify_autopay( bill_type=bill_type, source_account=source_account)
+        result = registry.call("modify_autopay", bill_type=bill_type, source_account=source_account)
         self.tracker.tool_end_at = time.time()
         self.log_tool_call("modify_autopay", {"bill_type": bill_type, "source_account": source_account}, self.tracker.tool_start_at, self.tracker.tool_end_at)
         return json.dumps(result)
@@ -384,7 +384,7 @@ class AssistantFnc:
             max_price: Optional maximum budget
         """
         self.tracker.tool_start_at = time.time()
-        result = dict(mock_apis.search_flights("search_products", query=query, max_price=max_price), note="SEARCH ONLY. Item is NOT in cart yet. If user asked to add to cart/car/cards or buy later, you MUST call add_to_cart(product_id=..., quantity=1) NOW before speaking!")
+        result = dict(registry.call("search_products", query=query, max_price=max_price, category=category), note="SEARCH ONLY. Item is NOT in cart yet. If user asked to add to cart/car/cards or buy later, you MUST call add_to_cart(product_id=..., quantity=1) NOW before speaking!")
         self.tracker.tool_end_at = time.time()
         self.log_tool_call("search_products", {k: v for k, v in {"query": query, "max_price": int(max_price) if max_price is not None else None, "category": category}.items() if v is not None}, self.tracker.tool_start_at, self.tracker.tool_end_at)
         return json.dumps(result)

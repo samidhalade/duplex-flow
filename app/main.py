@@ -36,22 +36,6 @@ app.add_middleware(
 
 app.include_router(router)
 
-# 2. Define routes AFTER 'app' is created
-@app.get("/api/live-logs")
-async def get_live_logs(room: str = None):
-    return {
-        "calls": [
-            {"function": "search_flights", "args": {"destination": "Dubai", "date": "April 10"}},
-            {"function": "book_flight", "args": {"passenger_name": "Aarushi"}},
-            {"function": "update_identity_doc", "args": {"doc_type": "passport", "doc_number": "E772211"}}
-        ],
-        "transcripts": [
-            "Searching flights to Dubai on April 10...",
-            "Booking flight for Aarushi...",
-            "Updating passport document successfully."
-        ]
-    }
-
 @app.get("/")
 def root():
     return {"message": "DuplexFlow Backend API is running."}

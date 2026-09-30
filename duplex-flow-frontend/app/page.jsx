@@ -4,9 +4,10 @@ import {
   LiveKitRoom,
   RoomAudioRenderer,
   BarVisualizer,
+  useRoomContext,
   useVoiceAssistant,
 } from "@livekit/components-react";
-import { Mic, PhoneOff, Wrench, MessageSquare } from "lucide-react";
+import { Mic, MicOff, PhoneOff, Wrench, MessageSquare } from "lucide-react";
 import { getToken, getLogs } from "@/lib/api";
 
 const STATE_LABEL = {
@@ -20,7 +21,7 @@ const STATE_LABEL = {
 
 const show = (item) => (typeof item === "string" ? item : JSON.stringify(item));
 
-function Agent({ onStateChange }) {
+function Agent({ onStateChange, micEnabled }) {
   const { state, audioTrack } = useVoiceAssistant();
   useEffect(() => onStateChange(state), [onStateChange, state]);
   return (
@@ -31,7 +32,50 @@ function Agent({ onStateChange }) {
         trackRef={audioTrack}
         className="bars"
       />
-      <p className="state">{STATE_LABEL[state] || state}</p>
+      <p className="state">
+        {!micEnabled && state === "listening"
+          ? "Microphone paused"
+          : STATE_LABEL[state] || state}
+      </p>
+    </div>
+  );
+}
+
+function SessionControls({ micEnabled, onMicChange, onEnd }) {
+  const room = useRoomContext();
+  const [micError, setMicError] = useState("");
+
+  async function toggleMic() {
+    const nextEnabled = !micEnabled;
+    try {
+      await room.localParticipant.setMicrophoneEnabled(nextEnabled);
+      onMicChange(nextEnabled);
+      setMicError("");
+    } catch (error) {
+      setMicError(`Microphone update failed: ${error.message}`);
+    }
+  }
+
+  return (
+    <div className="session-control-group">
+      <div className="session-actions">
+        <button
+          className="btn mic-toggle"
+          onClick={toggleMic}
+          aria-pressed={!micEnabled}
+        >
+          {micEnabled ? <MicOff size={18} /> : <Mic size={18} />}
+          {micEnabled ? "Stop listening" : "Resume listening"}
+        </button>
+        <button className="btn end" onClick={onEnd}>
+          <PhoneOff size={18} /> End session
+        </button>
+      </div>
+      {micError && (
+        <p className="error" role="alert">
+          {micError}
+        </p>
+      )}
     </div>
   );
 }
@@ -62,13 +106,20 @@ function Logs({ active, room }) {
   const [logs, setLogs] = useState({ calls: [], transcripts: [] });
   useEffect(() => {
     if (!active) return;
+    let current = true;
+    setLogs({ calls: [], transcripts: [] });
     const tick = () =>
       getLogs(room)
-        .then(setLogs)
+        .then((next) => {
+          if (current) setLogs(next);
+        })
         .catch(() => {});
     tick();
-    const id = setInterval(tick, 2000);
-    return () => clearInterval(id);
+    const id = setInterval(tick, 1000);
+    return () => {
+      current = false;
+      clearInterval(id);
+    };
   }, [active, room]);
 
   return (
@@ -94,6 +145,7 @@ export default function Studio() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [agentState, setAgentState] = useState("connecting");
+  const [micEnabled, setMicEnabled] = useState(true);
 
   useEffect(() => {
     if (!conn || !["connecting", "initializing"].includes(agentState)) return;
@@ -110,6 +162,7 @@ export default function Studio() {
     setBusy(true);
     setError("");
     setAgentState("connecting");
+    setMicEnabled(true);
     try {
       setConn(await getToken());
     } catch (e) {
@@ -142,11 +195,13 @@ export default function Studio() {
             onDisconnected={() => setConn(null)}
             data-lk-theme="default"
           >
-            <Agent onStateChange={setAgentState} />
+            <Agent onStateChange={setAgentState} micEnabled={micEnabled} />
             <RoomAudioRenderer />
-            <button className="btn end" onClick={() => setConn(null)}>
-              <PhoneOff size={18} /> End session
-            </button>
+            <SessionControls
+              micEnabled={micEnabled}
+              onMicChange={setMicEnabled}
+              onEnd={() => setConn(null)}
+            />
           </LiveKitRoom>
         ) : (
           <div className="orb idle">
