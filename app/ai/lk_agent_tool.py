@@ -36,11 +36,18 @@ import json
 import logging
 import time
 import asyncio
+import sys
 from dotenv import load_dotenv
 
 from livekit import agents, rtc
 from livekit.plugins import google, openai, silero
 from livekit.agents import Agent, AgentSession, AgentServer, llm
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from app.core.runtime_paths import (
+    AGENT_HEARTBEAT_LOG,
+    AGENT_TOOL_CALLS_LOG,
+    AGENT_TRANSCRIPTS_LOG,
+)
 
 # Compatibility for different livekit-agents versions
 if hasattr(llm, "function_tool"):
@@ -49,7 +56,6 @@ else:
     # Older version
     ai_callable_decorator = llm.ai_callable
 
-import sys
 LATENCY_PROFILE = "instant"
 if "--latency" in sys.argv:
     idx = sys.argv.index("--latency")
@@ -111,7 +117,7 @@ class LatencyTracker:
         logging.info(report)
         logging.info(json_report)
         print(report)
-        with open("/tmp/agent_heartbeat.log", "a", encoding="utf-8") as f:
+        with AGENT_HEARTBEAT_LOG.open("a", encoding="utf-8") as f:
             f.write(report + "\n")
             f.write(json_report + "\n")
 
@@ -216,7 +222,7 @@ class AssistantFnc:
         self.tracker = tracker
     def log_tool_call(self, func_name: str, args: dict, t_start: float, t_end: float):
         import json
-        with open("/tmp/agent_tool_calls.log", "a", encoding="utf-8") as f:
+        with AGENT_TOOL_CALLS_LOG.open("a", encoding="utf-8") as f:
             f.write(json.dumps({"room": self.room_name, "call": {"function": func_name, "args": args, "timestamp_start": t_start, "timestamp_end": t_end}}) + "\n")
 
     # ── Travel & Identity ───────────────────────────────────────────
@@ -419,7 +425,7 @@ server = AgentServer()
 
 @server.rtc_session()
 async def entrypoint(ctx: agents.JobContext):
-    with open('/tmp/agent_heartbeat.log', 'a', encoding='utf-8') as f:
+    with AGENT_HEARTBEAT_LOG.open('a', encoding='utf-8') as f:
         f.write(f'!!! AGENT JOINING ROOM: {ctx.room.name} at {time.ctime()} !!!\n')
     print(f'!!! AGENT JOINING ROOM: {ctx.room.name} !!!')
     model = get_realtime_model()
@@ -438,7 +444,7 @@ async def entrypoint(ctx: agents.JobContext):
             if not text and hasattr(item, 'content'):
                 text = ' '.join(str(c) for c in item.content if isinstance(c, str))
             if text:
-                with open('/tmp/agent_transcripts.log', 'a', encoding='utf-8') as tf:
+                with AGENT_TRANSCRIPTS_LOG.open('a', encoding='utf-8') as tf:
                     tf.write(json.dumps({'room': ctx.room.name, 'role': str(role), 'text': str(text)}) + '\n')
         except Exception:
             pass

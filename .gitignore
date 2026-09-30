@@ -1,7 +1,20 @@
-.env
+# Python
 venv/
 __pycache__/
 *.pyc
-*.wav
-*.log
+
+# Environment / secrets
+.env
+.env.*
+
+# Node
+node_modules/
+dist/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
 .DS_Store
+Thumbs.db

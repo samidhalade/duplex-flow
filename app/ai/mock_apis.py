@@ -2,7 +2,13 @@
 import json
 import logging
 from typing import List, Optional, Any, Dict
-from latency_injector import LatencyInjector
+
+try:
+    from latency_injector import LatencyInjector
+except ModuleNotFoundError as error:
+    if error.name != "latency_injector":
+        raise
+    LatencyInjector = None
 
 class CallLogger:
     def __init__(self):
@@ -69,13 +75,16 @@ class MockAPIRegistry:
     }
 
     def __init__(self, latency_profile="instant", enable_logging=True):
-        self.injector = LatencyInjector(profile=latency_profile)
+        if LatencyInjector is None and latency_profile != "instant":
+            raise RuntimeError("Non-instant latency profiles require latency_injector.py")
+        self.injector = LatencyInjector(profile=latency_profile) if LatencyInjector else None
         self.logger = CallLogger() if enable_logging else None
 
     def call(self, function_name: str, **kwargs) -> dict:
         func = self.FUNCTIONS.get(function_name)
         if func is None: return {"status": "error", "message": f"Unknown function: {function_name}"}
-        self.injector.inject(function_name)
+        if self.injector is not None:
+            self.injector.inject(function_name)
         result = func(**kwargs)
         if self.logger: self.logger.log(function_name, kwargs, result)
         return result

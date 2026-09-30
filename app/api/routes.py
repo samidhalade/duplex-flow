@@ -2,14 +2,15 @@ import json
 from pathlib import Path as FilePath
 from fastapi import APIRouter, HTTPException
 from app.services.livekit_service import generate_room_token
+from app.core.runtime_paths import AGENT_TOOL_CALLS_LOG, AGENT_TRANSCRIPTS_LOG
 
 router = APIRouter()
 
 BASE_DIR = FilePath(__file__).resolve().parent.parent.parent
 PASS_REPORT = BASE_DIR / "app/ai/fdb_v3_data_released/gemini2_5_pass_rate_report.json"
 EVAL_REPORT = BASE_DIR / "app/ai/fdb_v3_data_released/gemini2_5_evaluation_report.json"
-TOOL_LOG = FilePath("/tmp/agent_tool_calls.log")
-TRANSCRIPT_LOG = FilePath("/tmp/agent_transcripts.log")
+TOOL_LOG = AGENT_TOOL_CALLS_LOG
+TRANSCRIPT_LOG = AGENT_TRANSCRIPTS_LOG
 
 @router.get("/api/token")
 async def get_token():
